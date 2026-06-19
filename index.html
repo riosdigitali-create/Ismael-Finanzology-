@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Academia Financiera PRO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            overscroll-behavior-y: none;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 450px;
+            height: 100dvh;
+            margin: 0 auto;
+            background-color: #ffffff;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .btn-3d {
+            border-bottom-width: 4px;
+            transition: all 0.1s;
+        }
+        .btn-3d:active {
+            border-bottom-width: 0px;
+            transform: translateY(4px);
+        }
+        .btn-3d:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-bottom-width: 0px;
+            transform: translateY(4px);
+        }
+
+        .quiz-opt {
+            border: 2px solid #e5e7eb;
+            border-bottom-width: 4px;
+            transition: all 0.15s;
+            border-radius: 1rem;
+        }
+        .quiz-opt.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            color: #1d4ed8;
+        }
+        .quiz-opt.wrong-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            background-color: #f9fafb;
+            border-color: #f3f4f6;
+        }
+        .quiz-opt:active:not(.selected):not(.wrong-disabled) {
+            border-bottom-width: 2px;
+            transform: translateY(2px);
+        }
+
+        .robot-bounce { animation: bounceRobot 3s infinite ease-in-out; }
+        @keyframes bounceRobot {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .node-bounce { animation: bounceNode 2s infinite; }
+        @keyframes bounceNode {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .speech-bubble {
+            position: relative;
+            background: #f3f4f6;
+            border-radius: 1rem;
+            border: 2px solid #e5e7eb;
+        }
+        .speech-bubble:after {
+            content: ''; position: absolute; left: -10px; top: 20px;
+            width: 0; height: 0; border: 10px solid transparent; border-right-color: #f3f4f6; border-left: 0; margin-top: -10px; z-index: 1;
+        }
+        .speech-bubble:before {
+            content: ''; position: absolute; left: -13px; top: 20px;
+            width: 0; height: 0; border: 11px solid transparent; border-right-color: #e5e7eb; border-left: 0; margin-top: -11px; z-index: 0;
+        }
+
+        #footer-bar { transition: background-color 0.3s ease; }
+        .footer-normal { background-color: white; border-top: 2px solid #e5e7eb; }
+        .footer-correct { background-color: #d7ffb8; border-top: none; }
+        .footer-incorrect { background-color: #ffdfe0; border-top: none; }
+
+        .btn-correct { background-color: #58cc02; border-color: #58a700; color: white; }
+        .btn-incorrect { background-color: #ff4b4b; border-color: #ea2b2b; color: white; }
+        .btn-primary { background-color: #1cb0f6; border-color: #1899d6; color: white; }
+
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .fade-in { animation: fadeIn 0.4s ease forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .shake { animation: shake 0.4s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+        }
+
+        /* Conector para el mapa (Path) */
+        .path-line {
+            position: absolute; width: 8px; background-color: #e5e7eb; z-index: 0;
+        }
+    </style>
+</head>
+<body class="flex justify-center items-center min-h-screen">
+
+    <div id="app-container">
+        
+        <div id="home-screen" class="flex flex-col w-full h-full bg-[#f3f4f6]">
+            <!-- Header del Mapa -->
+            <div class="h-16 flex items-center justify-center px-4 bg-white border-b-2 border-gray-200 shrink-0 sticky top-0 z-20 shadow-sm">
+                <h1 class="font-black text-xl text-gray-800 tracking-wide uppercase">Ruta de Aprendizaje</h1>
+            </div>
+            
+            <!-- Contenedor scrolleable del Mapa -->
+            <div id="map-container" class="flex-1 hide-scroll overflow-y-auto p-8 relative flex flex-col items-center gap-10 pb-32">
+                <!-- Se inyectan los nodos/niveles dinámicamente -->
+            </div>
+        </div>
+
+        <div id="game-screen" class="hidden flex-col w-full h-full bg-white relative">
+            <!-- Header del Juego (Progreso del Módulo) -->
+            <div class="h-16 flex items-center px-4 gap-4 z-20 bg-white border-b-2 border-gray-100 shrink-0 shadow-sm">
+                <button onclick="returnToHome()" class="text-gray-400 hover:text-gray-600 font-bold text-2xl">✕</button>
+                <div class="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="h-full bg-[#58cc02] w-0 transition-all duration-500 rounded-full"></div>
+                </div>
+                <div class="font-black text-gray-400 text-sm w-12 text-right">
+                    <span id="step-counter">1</span>/<span id="total-steps"></span>
+                </div>
+            </div>
+
+            <!-- Contenido dinámico de la lección -->
+            <div id="main-content" class="flex-1 hide-scroll overflow-y-auto p-5 pb-40">
+                <!-- Inyectado vía JS -->
+            </div>
+
+            <!-- Footer fijo del Juego -->
+            <div id="footer-bar" class="absolute bottom-0 w-full p-4 footer-normal z-30 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
+                <div id="feedback-area" class="hidden mb-3">
+                    <div class="flex items-start gap-3">
+                        <div id="feedback-icon" class="w-10 h-10 rounded-full flex items-center justify-center font-black text-xl shrink-0 mt-1"></div>
+                        <div>
+                            <h2 id="feedback-title" class="font-black text-xl leading-tight"></h2>
+                            <p id="feedback-text" class="text-[15px] font-bold opacity-90 mt-1"></p>
+                        </div>
+                    </div>
+                </div>
+                <button id="main-btn" onclick="handleFooterAction()" class="w-full py-4 rounded-2xl font-black text-lg btn-3d btn-primary uppercase tracking-wider">
+                    Continuar
+                </button>
+            </div>
+        </div>
+
+        <div id="victory" class="absolute inset-0 bg-white z-50 hidden flex-col items-center justify-center p-6 text-center">
+            <div class="text-8xl mb-6 bounceRobot">🏆</div>
+            <h1 class="text-4xl font-black text-[#f59e0b] mb-2">¡Nivel Completado!</h1>
+            <p id="victory-text" class="text-gray-500 font-bold mb-10 text-lg px-4">Has dominado este producto.</p>
+            <div class="w-full max-w-[300px]">
+                <button onclick="finishModule()" class="w-full py-4 rounded-2xl font-black text-lg btn-3d btn-correct uppercase">
+                    Volver al Mapa
+                </button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const NovaSVG = `
+        <svg viewBox="0 0 100 100" class="w-20 h-20 robot-bounce shrink-0">
+            <rect x="25" y="35" width="50" height="40" rx="12" fill="#1cb0f6" />
+            <rect x="35" y="45" width="30" height="20" rx="6" fill="#ffffff" />
+            <circle cx="43" cy="55" r="4" fill="#1cb0f6" />
+            <circle cx="57" cy="55" r="4" fill="#1cb0f6" />
+            <line x1="50" y1="35" x2="50" y2="15" stroke="#1cb0f6" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="50" cy="15" r="6" fill="#ff4b4b" />
+            <path d="M25 47 Q 25 35 37 35 L63 35 Q 75 35 75 47" fill="rgba(255,255,255,0.2)"/>
+        </svg>
+    `;
+
+    // ARRAY DE MÓDULOS (Niveles)
+    const modules = [
+        {
+            id: "fundamentos",
+            title: "Fundamentos",
+            desc: "Primas y la Regla BÁSICA.",
+            color: "bg-[#1cb0f6]",
+            border: "border-[#1899d6]",
+            icon: "💧",
+            steps: [
+                {
+                    type: "info",
+                    dialogue: "¡Hola! Soy Nova 🤖. Antes de ver productos, dominemos los cimientos.",
+                    cards: [
+                        { emoji: "💧", title: "La Prima", text: "Es la aportación que el cliente da para mantener el proyecto. Edad Mínima: 12 años." },
+                        { emoji: "💀", title: "Regla BÁSICA", text: "La cobertura BÁSICA de TODO seguro SIEMPRE es el <b>Fallecimiento</b>. Invalidez o cirugías son ADICIONALES." }
+                    ]
+                },
+                {
+                    type: "quiz",
+                    question: "Un cliente contrata un seguro básico. ¿Qué es lo ÚNICO que le cubre por default?",
+                    options: [
+                        { text: "Gastos médicos mayores", hint: "Recuerda la regla BÁSICA: el seguro solo cubre el evento final por defecto." },
+                        { text: "Invalidez por accidente", hint: "La invalidez siempre es un beneficio adicional, no viene en lo básico." },
+                        { text: "Solo el fallecimiento", correct: true }
+                    ],
+                    feedback: "¡Exacto! Básico = Fallecimiento. Todo lo demás se le cuelga como extra."
+                }
+            ]
+        },
+        {
+            id: "proteccion",
+            title: "Protección Pura",
+            desc: "Bienestar y Respaldo.",
+            color: "bg-[#ce82ff]",
+            border: "border-[#a559d6]",
+            icon: "🛡️",
+            steps: [
+                {
+                    type: "info",
+                    dialogue: "Son escudos baratos pero poderosos, ideales para presupuestos ajustados.",
+                    cards: [
+                        { emoji: "☂️", title: "Bienestar", text: "Entrega un <b>CHEQUE ÚNICO</b>. Plazos: 10 a 30 años. Mínimo 150k UDIS." },
+                        { emoji: "🗓️", title: "Respaldo", text: "Entrega <b>RENTAS MENSUALES</b>. Mínimo 15 años (NO hay de 10). Mínimo 1,650 UDIS/mes." },
+                        { emoji: "🛑", title: "Regla 5 Años", text: "El Bienestar a 5 años existe, pero <b>está prohibido ofrecerlo</b>. Ofrece mínimo a 10 años siempre." }
+                    ]
+                },
+                {
+                    type: "quiz",
+                    question: "Si el papá falta, la mamá no sabe administrar sumas grandes. ¿Qué producto conviene?",
+                    options: [
+                        { text: "Bienestar", hint: "El Bienestar entrega millones de golpe. Si no sabe administrar, se lo gastará rápido." },
+                        { text: "Respaldo", correct: true },
+                        { text: "Garantía", hint: "Garantía es para la universidad, no para el gasto mensual." }
+                    ],
+                    feedback: "¡Muy bien! El Respaldo funciona como una nómina mensual constante."
+                },
+                {
+                    type: "quiz",
+                    question: "Un joven te pide el seguro más barato por 5 años. ¿Qué haces?",
+                    options: [
+                        { text: "Venderle el Bienestar a 5 años.", hint: "¡Cuidado! Hay una regla que prohíbe explícitamente vender a ese plazo." },
+                        { text: "Ofrecerle el Bienestar a 10 años como mínimo.", correct: true }
+                    ],
+                    feedback: "¡Excelente! A 5 años no suma a metas. Mínimo 10 años siempre."
+                }
+            ]
+        },
+        {
+            id: "premium",
+            title: "Los Premium",
+            desc: "Protección + Devolución.",
+            color: "bg-[#ff4b4b]",
+            border: "border-[#ea2b2b]",
+            icon: "♻️",
+            steps: [
+                {
+                    type: "info",
+                    dialogue: "¿El cliente siente que 'tira su dinero'? ¡Los Premium son la solución!",
+                    cards: [
+                        { emoji: "🎟️", title: "El Reembolso", text: "Si el cliente sobrevive al plazo, Prudential le <b>devuelve sus aportaciones</b> básicas." },
+                        { emoji: "🦽", title: "El Super Bono", text: "Si contrató invalidez y se invalida: le pagan la suma, <b>ya no paga más primas</b>, y al final... ¡igual le devuelven su ahorro!" }
+                    ]
+                },
+                {
+                    type: "quiz",
+                    question: "¿Qué pasa en un Bienestar Premium si el cliente queda inválido a medio camino?",
+                    options: [
+                        { text: "Pierde su ahorro pero cobra invalidez.", hint: "El Premium guarda un beneficio secreto en estos casos." },
+                        { text: "Cobra, deja de pagar, y al final le devuelven su ahorro.", correct: true }
+                    ],
+                    feedback: "¡Brillante! Cobra ahora, se salda, y recupera después."
+                }
+            ]
+        },
+        {
+            id: "vida",
+            title: "El Vitalicio",
+            desc: "Vida Pru y Valor de Rescate.",
+            color: "bg-[#ffc800]",
+            border: "border-[#d8a800]",
+            icon: "🏠",
+            steps: [
+                {
+                    type: "info",
+                    dialogue: "Este es el Rey: protege desde hoy hasta los 101 años.",
+                    cards: [
+                        { emoji: "🏠", title: "Vida Prudential", text: "Lo pagas en 10, 15 o 20 años y te quedas cubierto para siempre. <b>Véndelo con piso de 75k UDIS</b> por si el cliente entra en crisis y debes bajarlo a 70k." },
+                        { emoji: "🔒", title: "Valor de Rescate", text: "Es un ahorro escondido. <b>Años 1 y 2 es CERO</b> por ley antilavado. Año 3 en adelante ya lo puedes ver." }
+                    ]
+                },
+                {
+                    type: "quiz",
+                    question: "Un cliente con 'Vida' pide sacar su Valor de Rescate en el mes 18. ¿Qué le dices?",
+                    options: [
+                        { text: "Que el Rescate es CERO en el año 1 y 2 por ley.", correct: true },
+                        { text: "Que sí puede sacar el 50%.", hint: "Recuerda la ley de Prevención de Lavado de Dinero." }
+                    ],
+                    feedback: "¡Perfecto! Años 1 y 2 = Cero. Es una regla inquebrantable."
+                }
+            ]
+        },
+        {
+            id: "garantia",
+            title: "Educación",
+            desc: "Garantía Prudential.",
+            color: "bg-[#2b90ce]",
+            border: "border-[#1d73a8]",
+            icon: "🎓",
+            steps: [
+                {
+                    type: "info",
+                    dialogue: "Llegó el turno de la escuela de los niños.",
+                    cards: [
+                        { emoji: "🎓", title: "Garantía Prudential", text: "Es temporal. A la sobrevivencia, <b>le entrega el dinero al CONTRATANTE</b> (papá/mamá), no al niño." },
+                        { emoji: "👨‍🎓", title: "Jugada Maestra", text: "Puedes meter hasta <b>5 Garantías en una póliza</b> (ej. plazos 17, 18, 19, 20) para pagar la carrera año con año." }
+                    ]
+                },
+                {
+                    type: "quiz",
+                    question: "¿A quién le entrega el dinero el 'Garantía' cuando sobrevive al plazo?",
+                    options: [
+                        { text: "Al hijo (asegurado), directo.", hint: "Un joven de 18 años podría gastarlo en un coche. Prudential se lo da al adulto." },
+                        { text: "Al Contratante (Papá/Mamá).", correct: true }
+                    ],
+                    feedback: "¡Correcto! El papá decide si paga la universidad o le pone un negocio."
+                }
+            ]
+        },
+        {
+            id: "retiro",
+            title: "El Retiro",
+            desc: "PPR vs Retiro Plus.",
+            color: "bg-[#58cc02]",
+            border: "border-[#58a700]",
+            icon: "⛺",
+            steps: [
+                {
+                    type: "info",
+                    dialogue: "Dos caminos muy diferentes para la pensión.",
+                    cards: [
+                        { emoji: "⛺", title: "PPR Tradicional", text: "Deduces impuestos. Pero ojo: <b>La protección se ACABA</b> cuando te retiras." },
+                        { emoji: "🌅", title: "Retiro Plus", text: "A los 65 te paga tu retiro... <b>¡Y SIGUES PROTEGIDO hasta los 100 años!</b>" }
+                    ]
+                },
+                {
+                    type: "quiz",
+                    question: "¿Cuál es la diferencia MÁS IMPORTANTE entre PPR Tradicional y Retiro Plus?",
+                    options: [
+                        { text: "En el Plus sigues protegido hasta los 100 años; en el PPR termina.", correct: true },
+                        { text: "El PPR es mucho más caro.", hint: "Esa no es la diferencia estructural a largo plazo." }
+                    ],
+                    feedback: "¡Excelente! Retiro Plus = Cobras a los 65 y SIGUES protegido."
+                }
+            ]
+        },
+        {
+            id: "empresas",
+            title: "Empresas",
+            desc: "Hombre Clave.",
+            color: "bg-[#ff9600]",
+            border: "border-[#cc7800]",
+            icon: "🏢",
+            steps: [
+                {
+                    type: "info",
+                    dialogue: "Los negocios también necesitan protección para sobrevivir.",
+                    cards: [
+                        { emoji: "🏢", title: "Hombre Clave", text: "Seguro para el 'cerebro' del negocio. Si falta, le pagan a la Empresa. <b>La prima es 100% deducible (Art. 27).</b>" }
+                    ]
+                },
+                {
+                    type: "quiz",
+                    question: "Para que el Hombre Clave sea deducible, ¿quién debe ser el Beneficiario Irrevocable?",
+                    options: [
+                        { text: "La familia del empleado.", hint: "Si el dinero va a la familia, no protege a la empresa. El SAT no lo deja deducir así." },
+                        { text: "La Empresa que lo contrata.", correct: true }
+                    ],
+                    feedback: "¡Justo en el clavo! Protege el flujo de la empresa."
+                }
+            ]
+        },
+        {
+            id: "reglas",
+            title: "Reglas Finales",
+            desc: "Salud y Recargos.",
+            color: "bg-[#1cb0f6]",
+            border: "border-[#1899d6]",
+            icon: "⚕️",
+            steps: [
+                {
+                    type: "info",
+                    dialogue: "Últimas reglas de oro para cuidar a tu cliente y a tu cartera.",
+                    cards: [
+                        { emoji: "🏥", title: "Salud (Renovación)", text: "Hospital, Enf. Graves y Cirugías <b>se renuevan cada 5 años</b> (ajustando el costo a la nueva edad)." },
+                        { emoji: "📉", title: "Recargos", text: "Semestral (+4%), Trimestral (+6%), <b>Mensual (+8%)</b>. Vende Anual para que no se caiga tu conservación." }
+                    ]
+                },
+                {
+                    type: "quiz",
+                    question: "Si el cliente quiere pagar de forma MENSUAL, ¿de cuánto es el recargo?",
+                    options: [
+                        { text: "No hay recargo.", hint: "Siempre hay recargo si se fracciona el riesgo." },
+                        { text: "+8%", correct: true }
+                    ],
+                    feedback: "¡Exacto! Mensual = +8%. Por eso es mejor cobrar ANUAL con Meses Sin Intereses."
+                }
+            ]
+        }
+    ];
+
+    let currentModuleIndex = 0;
+    let unlockedModules = 0; // Hasta dónde ha llegado (0 = solo primer módulo)
+    
+    let currentStep = 0;
+    let selectedOptionIndex = null;
+    let isChecking = false;
+    let hasFailedCurrentQuiz = false;
+
+    // Elementos DOM
+    const homeScreen = document.getElementById('home-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const mapContainer = document.getElementById('map-container');
+    const mainContent = document.getElementById('main-content');
+    const progressBar = document.getElementById('progress-bar');
+    const stepCounter = document.getElementById('step-counter');
+    const totalStepsEl = document.getElementById('total-steps');
+    const footerBar = document.getElementById('footer-bar');
+    const mainBtn = document.getElementById('main-btn');
+    const feedbackArea = document.getElementById('feedback-area');
+    const feedbackIcon = document.getElementById('feedback-icon');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const feedbackText = document.getElementById('feedback-text');
+
+    function renderHome() {
+        homeScreen.classList.remove('hidden');
+        gameScreen.classList.add('hidden');
+        document.getElementById('victory').classList.add('hidden');
+
+        let mapHtml = '';
+        
+        // Dibuja la línea conectora de fondo
+        mapHtml += `<div class="absolute w-4 bg-gray-200 h-[80%] z-0 rounded-full left-1/2 transform -translate-x-1/2 mt-10"></div>`;
+
+        modules.forEach((mod, index) => {
+            const isUnlocked = index <= unlockedModules;
+            const isCurrent = index === unlockedModules;
+            
+            // Layout alternado (zig-zag)
+            const alignClass = index % 2 === 0 ? '-ml-20' : 'ml-20';
+            
+            let btnClass = "w-24 h-24 rounded-full flex flex-col items-center justify-center font-black text-3xl shadow-xl z-10 relative transition-transform ";
+            let textClass = "font-bold text-sm mt-3 text-center ";
+
+            if (isUnlocked) {
+                btnClass += `${mod.color} text-white border-b-8 ${mod.border} cursor-pointer active:translate-y-2 active:border-b-0`;
+                if(isCurrent) btnClass += " node-bounce ring-4 ring-offset-4 ring-blue-300";
+                textClass += "text-gray-700";
+            } else {
+                btnClass += `bg-gray-300 text-gray-400 border-b-8 border-gray-400 cursor-not-allowed`;
+                textClass += "text-gray-400";
+            }
+
+            mapHtml += `
+                <div class="relative flex flex-col items-center w-full z-10 ${alignClass}">
+                    <button ${isUnlocked ? `onclick="startModule(${index})"` : 'disabled'} class="${btnClass}">
+                        ${mod.icon}
+                        ${index < unlockedModules ? `<div class="absolute -top-2 -right-2 bg-yellow-400 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 border-white">⭐</div>` : ''}
+                    </button>
+                    <div class="${textClass} max-w-[120px] leading-tight">
+                        <span class="block font-black text-lg">${mod.title}</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        mapContainer.innerHTML = mapHtml;
+    }
+
+    function startModule(index) {
+        currentModuleIndex = index;
+        currentStep = 0;
+        homeScreen.classList.add('hidden');
+        gameScreen.classList.replace('hidden', 'flex');
+        
+        totalStepsEl.innerText = modules[currentModuleIndex].steps.length;
+        renderStep();
+    }
+
+    function renderStep() {
+        const stepData = modules[currentModuleIndex].steps[currentStep];
+        selectedOptionIndex = null;
+        isChecking = false;
+        hasFailedCurrentQuiz = false;
+        
+        // Reset Progress
+        stepCounter.innerText = currentStep + 1;
+        progressBar.style.width = `${(currentStep / modules[currentModuleIndex].steps.length) * 100}%`;
+
+        // Reset Footer
+        footerBar.className = 'absolute bottom-0 w-full p-4 footer-normal z-30 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]';
+        feedbackArea.classList.add('hidden');
+        
+        let html = '';
+
+        if (stepData.type === 'info') {
+            mainBtn.className = 'w-full py-4 rounded-2xl font-black text-lg btn-3d btn-primary uppercase tracking-wider';
+            mainBtn.innerText = 'Continuar';
+            mainBtn.disabled = false;
+
+            html += `
+                <div class="fade-in">
+                    <div class="flex items-end gap-3 mb-6 mt-2">
+                        ${NovaSVG}
+                        <div class="speech-bubble p-4 text-[15px] font-bold text-gray-700 w-full leading-snug">
+                            ${stepData.dialogue}
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+            `;
+
+            stepData.cards.forEach(card => {
+                html += `
+                    <div class="bg-white border-2 border-gray-200 border-b-4 rounded-2xl p-4 flex gap-4 items-start">
+                        <div class="text-3xl shrink-0 leading-none mt-1">${card.emoji}</div>
+                        <div>
+                            <h3 class="font-black text-lg text-blue-500 leading-tight mb-1">${card.title}</h3>
+                            <p class="text-[14.5px] text-gray-600 leading-snug">${card.text}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div></div>`;
+
+        } else if (stepData.type === 'quiz') {
+            mainBtn.className = 'w-full py-4 rounded-2xl font-black text-lg btn-3d bg-gray-200 text-gray-400 uppercase tracking-wider border-gray-300';
+            mainBtn.innerText = 'Comprobar';
+            mainBtn.disabled = true;
+
+            html += `
+                <div class="fade-in mt-2">
+                    <h2 class="text-xl font-black text-gray-800 mb-6 leading-tight">${stepData.question}</h2>
+                    <div class="space-y-3" id="options-container">
+            `;
+
+            stepData.options.forEach((opt, index) => {
+                html += `
+                    <div onclick="selectOption(${index})" class="quiz-opt p-4 cursor-pointer flex items-center gap-3" id="opt-${index}">
+                        <div class="w-6 h-6 shrink-0 rounded-full border-2 border-gray-300 flex items-center justify-center font-bold text-transparent check-mark text-sm">✓</div>
+                        <span class="font-bold text-gray-700 text-[15px] flex-1 leading-snug">${opt.text}</span>
+                    </div>
+                `;
+            });
+            html += `</div></div>`;
+        }
+
+        mainContent.innerHTML = html;
+        mainContent.scrollTo(0,0);
+    }
+
+    function selectOption(index) {
+        if (isChecking && !hasFailedCurrentQuiz) return; 
+        
+        if(isChecking && hasFailedCurrentQuiz) {
+            isChecking = false;
+            footerBar.className = 'absolute bottom-0 w-full p-4 footer-normal z-30 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]';
+            feedbackArea.classList.add('hidden');
+        }
+
+        const selectedEl = document.getElementById(`opt-${index}`);
+        if(selectedEl.classList.contains('wrong-disabled')) return; 
+
+        selectedOptionIndex = index;
+        
+        const opts = document.querySelectorAll('.quiz-opt:not(.wrong-disabled)');
+        opts.forEach((el) => {
+            el.classList.remove('selected');
+            const check = el.querySelector('.check-mark');
+            check.classList.remove('bg-[#1cb0f6]', 'border-[#1cb0f6]', 'text-white');
+            check.classList.add('text-transparent', 'border-gray-300');
+        });
+
+        selectedEl.classList.add('selected');
+        const check = selectedEl.querySelector('.check-mark');
+        check.classList.replace('text-transparent', 'text-white');
+        check.classList.replace('border-gray-300', 'border-[#1cb0f6]');
+        check.classList.add('bg-[#1cb0f6]');
+
+        mainBtn.className = 'w-full py-4 rounded-2xl font-black text-lg btn-3d btn-primary uppercase tracking-wider';
+        mainBtn.innerText = 'Comprobar';
+        mainBtn.disabled = false;
+    }
+
+    function handleFooterAction() {
+        const stepData = modules[currentModuleIndex].steps[currentStep];
+
+        if (stepData.type === 'info') {
+            nextStep();
+        } else if (stepData.type === 'quiz') {
+            if (!isChecking) {
+                checkAnswer();
+            } else if (!hasFailedCurrentQuiz) {
+                nextStep();
+            } else {
+                // Modo Reintentar
+                isChecking = false;
+                selectedOptionIndex = null;
+                footerBar.className = 'absolute bottom-0 w-full p-4 footer-normal z-30 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]';
+                feedbackArea.classList.add('hidden');
+                mainBtn.className = 'w-full py-4 rounded-2xl font-black text-lg btn-3d bg-gray-200 text-gray-400 uppercase tracking-wider border-gray-300';
+                mainBtn.innerText = 'Comprobar';
+                mainBtn.disabled = true;
+                
+                const opts = document.querySelectorAll('.quiz-opt:not(.wrong-disabled)');
+                opts.forEach((el) => {
+                    el.classList.remove('selected');
+                    const check = el.querySelector('.check-mark');
+                    check.classList.remove('bg-[#1cb0f6]', 'border-[#1cb0f6]', 'text-white');
+                    check.classList.add('text-transparent', 'border-gray-300');
+                });
+            }
+        }
+    }
+
+    function checkAnswer() {
+        const stepData = modules[currentModuleIndex].steps[currentStep];
+        const isCorrect = stepData.options[selectedOptionIndex].correct;
+        isChecking = true;
+
+        feedbackArea.classList.remove('hidden');
+
+        if (isCorrect) {
+            hasFailedCurrentQuiz = false;
+            footerBar.className = 'absolute bottom-0 w-full p-4 footer-correct z-30 shrink-0';
+            mainBtn.className = 'w-full py-4 rounded-2xl font-black text-lg btn-3d btn-correct uppercase tracking-wider';
+            mainBtn.innerText = 'Continuar';
+            
+            feedbackIcon.innerHTML = '✓';
+            feedbackIcon.className = 'w-10 h-10 rounded-full flex items-center justify-center font-black text-2xl bg-white text-[#58cc02] shrink-0';
+            feedbackTitle.innerText = '¡Excelente!';
+            feedbackTitle.className = 'font-black text-xl text-[#58a700]';
+            feedbackText.innerText = stepData.feedback;
+            feedbackText.className = 'text-[15px] font-bold text-[#58a700] opacity-90 mt-1 leading-snug';
+        } else {
+            hasFailedCurrentQuiz = true;
+            footerBar.className = 'absolute bottom-0 w-full p-4 footer-incorrect z-30 shrink-0';
+            mainBtn.className = 'w-full py-4 rounded-2xl font-black text-lg btn-3d btn-incorrect uppercase tracking-wider';
+            mainBtn.innerText = 'Entendido';
+            
+            feedbackIcon.innerHTML = '✕';
+            feedbackIcon.className = 'w-10 h-10 rounded-full flex items-center justify-center font-black text-2xl bg-white text-[#ff4b4b] shrink-0';
+            feedbackTitle.innerText = 'Pista';
+            feedbackTitle.className = 'font-black text-xl text-[#ea2b2b]';
+            feedbackText.innerText = stepData.options[selectedOptionIndex].hint || "Piénsalo mejor...";
+            feedbackText.className = 'text-[15px] font-bold text-[#ea2b2b] opacity-90 mt-1 leading-snug';
+
+            const selectedOptEl = document.getElementById(`opt-${selectedOptionIndex}`);
+            selectedOptEl.classList.add('shake', 'wrong-disabled');
+            selectedOptEl.classList.remove('selected');
+            setTimeout(() => selectedOptEl.classList.remove('shake'), 400);
+            
+            const check = selectedOptEl.querySelector('.check-mark');
+            check.classList.remove('bg-[#1cb0f6]', 'border-[#1cb0f6]', 'text-white');
+            check.innerHTML = '✕';
+            check.classList.add('text-gray-400', 'border-gray-200', 'bg-gray-100');
+        }
+    }
+
+    function nextStep() {
+        currentStep++;
+        if (currentStep >= modules[currentModuleIndex].steps.length) {
+            progressBar.style.width = '100%';
+            stepCounter.innerText = modules[currentModuleIndex].steps.length;
+            
+            document.getElementById('victory-text').innerText = `Has completado: ${modules[currentModuleIndex].title}`;
+            document.getElementById('victory').classList.replace('hidden', 'flex');
+        } else {
+            renderStep();
+        }
+    }
+
+    function finishModule() {
+        // Desbloquear el siguiente módulo
+        if (currentModuleIndex === unlockedModules && unlockedModules < modules.length - 1) {
+            unlockedModules++;
+        }
+        renderHome();
+    }
+
+    function returnToHome() {
+        renderHome();
+    }
+
+    // Inicializar app
+    renderHome();
+
+</script>
+</body>
+</html>
